@@ -1,0 +1,34 @@
+{
+  "project": {
+    "background_image": "static/bg.png",
+    "output_filename": "static/output/final_video.mp4"
+  },
+  "texts": {
+    "text1": ["Apple", "Banana"],
+    "text2": ["/ˈæp.əl/", "/bəˈnæn.ə/"],
+    "text3": ["苹果", "香蕉"],
+    "text4": ["n.", "n."]
+  },
+  "layout": {
+    "text1": { "x": 100, "y": 300, "size": 120, "color": "#000000", "opacity": 1.0, "font": "MiSans-Heavy.ttf" },
+    "text2": { "x": 100, "y": 450, "size": 60,  "color": "#333333", "opacity": 0.8, "font": "MiSans-ExtraLight.ttf" },
+    "text3": { "x": 100, "y": 600, "size": 80,  "color": "#666666", "opacity": 0.9, "font": "MiSans-Light.ttf" },
+    "text4": { "x": 100, "y": 200, "size": 50,  "color": "#999999", "opacity": 0.6, "font": "MiSans-Normal.ttf" },
+    "watermark": { "text": "@YourChannel", "x": 1800, "y": 1000, "size": 30, "color": "#000000", "opacity": 0.3, "font": "MiSans-Normal.ttf" }
+  },
+  "tts": {
+    "voice": "en-US-AvaMultilingualNeural",
+    "source_list": "text1"
+  },
+  "behavior": {
+    "repeat_count": 2,
+    "show_text3_from_rep": 2,
+    "duration_multiplier": 1.5,
+    "segment_name_template": "item{index}_rep{rep}.mp4"
+  },
+  "paths": {
+    "temp_dir": "temp",
+    "ffmpeg_path": "C:\\Users\\muyan556\\scoop\\shims\\ffmpeg.exe",
+    "font_dir": "ttf"
+  }
+}

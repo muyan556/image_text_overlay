@@ -1,603 +1,173 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TTS 视频生成工具</title>
-  <meta name="description" content="从文本列表批量生成朗读视频，支持实时预览、自定义TTS与文字样式" />
-  <link rel="stylesheet" href="/static/css/style.css" />
+    <meta charset="UTF-8">
+    <title>Video Synth Console</title>
+    <style>
+        :root { --bg: #F5F5F5; --surface: #FFFFFF; --text: #111111; --border: #DDDDDD; --accent: #000000; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        .panel { padding: 25px; background: var(--surface); overflow-y: auto; }
+        .editor-panel { width: 420px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10;}
+        .preview-panel { flex: 1; display: flex; flex-direction: column; align-items: center; background: #EAEAEA; padding-top: 40px;}
+        
+        h2 { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 10px 0; border-bottom: 2px solid var(--accent); padding-bottom: 8px; display: inline-block;}
+        
+        .form-group { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; margin-bottom: 8px;}
+        .form-group label { font-weight: 600; color: #555; }
+        .row { display: flex; gap: 12px; }
+        .row > * { flex: 1; }
+        
+        input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 4px; background: #FAFAFA; font-family: inherit; outline: none; transition: all 0.2s; }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent); background: #FFF; box-shadow: 0 0 0 2px rgba(0,0,0,0.05);}
+        
+        button { padding: 14px; background: var(--surface); color: var(--text); font-weight: bold; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
+        button:hover { background: var(--accent); color: var(--surface); }
+        button.primary { background: var(--accent); color: var(--surface); margin-top: 10px;}
+        button.primary:hover { opacity: 0.8; }
+
+        .preview-img { max-width: 90%; max-height: 55vh; border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-radius: 4px; background: #FFF;}
+        
+        .log-box { width: 90%; max-width: 1200px; flex: 1; margin: 30px 0; background: #1E1E1E; color: #4AF626; font-family: "Courier New", monospace; padding: 20px; font-size: 0.85rem; overflow-y: auto; border-radius: 6px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);}
+        .progress-bar-container { width: 90%; max-width: 1200px; height: 6px; background: #DDD; margin-top: 20px; border-radius: 3px; overflow: hidden;}
+        .progress-bar { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+    </style>
 </head>
-
 <body>
-  <div id="app">
 
-    <!-- ═══════════════════════════════════════════════════════ HEADER -->
-    <header id="header">
-      <div class="logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-        <div>
-          <div>TTS 视频生成工具</div>
-          <div class="tagline">文本列表 → 朗读视频 · 实时预览</div>
+<div class="panel editor-panel">
+    <h2>Data & Layout</h2>
+    <div id="config-form" style="display: flex; flex-direction: column; gap: 10px;">
         </div>
-      </div>
-      <div class="spacer"></div>
-      <div class="header-actions">
-        <button class="btn btn-secondary btn-sm" id="btn-save-config">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-            <polyline points="17 21 17 13 7 13 7 21" />
-            <polyline points="7 3 7 8 15 8" />
-          </svg>
-          保存配置
-        </button>
-      </div>
-    </header>
+    <div style="display: flex; gap: 10px; margin-top: 10px; flex-direction: column;">
+        <button onclick="updatePreview()">Refresh Preview</button>
+        <button class="primary" onclick="buildVideo()">Build Final Video</button>
+    </div>
+</div>
 
-    <!-- ══════════════════════════════════════════════════ LEFT PANEL -->
-    <aside id="panel-left">
+<div class="panel preview-panel">
+    <img id="preview-image" class="preview-img" src="" alt="Live Preview..." />
+    <div class="progress-bar-container"><div id="progress-bar" class="progress-bar"></div></div>
+    <div id="log-console" class="log-box">SYSTEM READY. WAITING FOR COMMANDS...\n</div>
+</div>
 
-      <!-- System -->
-      <div class="section">
-        <div class="section-title">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93A10 10 0 0 0 19.07 19.07" />
-          </svg>
-          系统设置
-        </div>
-        <div class="form-row">
-          <label>FFmpeg 路径</label>
-          <input type="text" id="ffmpeg-path" class="preview-trigger" placeholder="C:\...\ffmpeg.exe" />
-        </div>
-        <div class="form-row">
-          <label>背景图片</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="bg-path-display" readonly placeholder="background.png" style="flex:1" />
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bg-file-input').click()">
-              选择
-            </button>
-            <input type="file" id="bg-file-input" accept="image/*" style="display:none" />
-          </div>
-        </div>
-      </div>
+<script>
+    let currentConfig = {};
+    const textLayers = ['text1', 'text2', 'text3', 'text4'];
 
-      <!-- TTS Settings -->
-      <div class="section">
-        <div class="section-title">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-            <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-          TTS 设置
-        </div>
-        <div class="form-row">
-          <label>TTS 后端</label>
-          <select id="tts-backend" class="preview-trigger">
-            <option value="http_api">HTTP API (默认)</option>
-            <option value="edge_tts">Edge TTS (免费内置)</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>朗读文本来源</label>
-          <select id="tts-source-list" class="preview-trigger">
-            <option value="0">文本列表 1</option>
-            <option value="1">文本列表 2</option>
-            <option value="2">文本列表 3</option>
-            <option value="3">文本列表 4</option>
-          </select>
-        </div>
+    function renderForm(cfg) {
+        const form = document.getElementById('config-form');
+        form.innerHTML = '';
+        
+        // Data Inputs
+        form.innerHTML += `<div class="form-group"><label>Text 1 (JSON Array)</label><textarea id="data-text1" rows="2">${JSON.stringify(cfg.texts.text1)}</textarea></div>`;
+        form.innerHTML += `<div class="form-group"><label>Text 3 (JSON Array)</label><textarea id="data-text3" rows="2">${JSON.stringify(cfg.texts.text3)}</textarea></div>`;
+        
+        // Layout Inputs
+        textLayers.forEach(key => {
+            const layout = cfg.layout[key];
+            if(!layout) return;
+            form.innerHTML += `
+            <div style="border-left: 4px solid #E0E0E0; padding-left: 15px; margin-top: 10px;">
+                <strong style="font-size: 0.9rem; color: #333;">${key.toUpperCase()} STYLE</strong>
+                <div class="row" style="margin-top: 8px;">
+                    <div class="form-group"><label>X Pos</label><input type="number" id="${key}-x" value="${layout.x}"></div>
+                    <div class="form-group"><label>Y Pos</label><input type="number" id="${key}-y" value="${layout.y}"></div>
+                    <div class="form-group"><label>Size</label><input type="number" id="${key}-size" value="${layout.size}"></div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label>Opacity</label><input type="number" step="0.1" max="1" min="0" id="${key}-opacity" value="${layout.opacity}"></div>
+                    <div class="form-group"><label>Color</label><input type="color" id="${key}-color" value="${layout.color}" style="padding: 2px;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Font Family</label>
+                    <select id="${key}-font">
+                        <option value="MiSans-Heavy.ttf" ${layout.font === 'MiSans-Heavy.ttf' ? 'selected' : ''}>MiSans Heavy</option>
+                        <option value="MiSans-Normal.ttf" ${layout.font === 'MiSans-Normal.ttf' ? 'selected' : ''}>MiSans Normal</option>
+                        <option value="MiSans-Light.ttf" ${layout.font === 'MiSans-Light.ttf' ? 'selected' : ''}>MiSans Light</option>
+                        <option value="MiSans-ExtraLight.ttf" ${layout.font === 'MiSans-ExtraLight.ttf' ? 'selected' : ''}>MiSans ExtraLight</option>
+                        <option value="msyh.ttc" ${layout.font === 'msyh.ttc' ? 'selected' : ''}>微软雅黑 (System)</option>
+                    </select>
+                </div>
+            </div>`;
+        });
+    }
 
-        <!-- HTTP API Fields -->
-        <div id="http-api-fields">
-          <div class="form-row">
-            <label>API 地址</label>
-            <input type="text" id="tts-api-url" class="preview-trigger"
-              placeholder="https://api.tjit.net/api/ai/audio/speech" />
-          </div>
-          <div class="form-row">
-            <label>API Key</label>
-            <input type="text" id="tts-api-key" placeholder="sk-..." />
-          </div>
-          <div class="form-row">
-            <label>Voice ID</label>
-            <input type="text" id="tts-voice" class="preview-trigger" placeholder="zh-CN-XiaoxiaoNeural" />
-          </div>
-        </div>
+    function gatherForm() {
+        try {
+            currentConfig.texts.text1 = JSON.parse(document.getElementById('data-text1').value);
+            currentConfig.texts.text3 = JSON.parse(document.getElementById('data-text3').value);
+        } catch(e) { alert("Invalid JSON format in Text arrays!"); return null; }
+        
+        textLayers.forEach(key => {
+            if(!currentConfig.layout[key]) return;
+            currentConfig.layout[key].x = parseInt(document.getElementById(`${key}-x`).value);
+            currentConfig.layout[key].y = parseInt(document.getElementById(`${key}-y`).value);
+            currentConfig.layout[key].size = parseInt(document.getElementById(`${key}-size`).value);
+            currentConfig.layout[key].opacity = parseFloat(document.getElementById(`${key}-opacity`).value);
+            currentConfig.layout[key].color = document.getElementById(`${key}-color`).value;
+            currentConfig.layout[key].font = document.getElementById(`${key}-font`).value;
+        });
+        return currentConfig;
+    }
 
+    async function loadConfig() {
+        const res = await fetch('/api/config');
+        currentConfig = await res.json();
+        renderForm(currentConfig);
+        updatePreview();
+    }
 
-      </div>
+    async function updatePreview() {
+        const cfg = gatherForm();
+        if(!cfg) return;
+        const res = await fetch('/api/preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(cfg)
+        });
+        const data = await res.json();
+        document.getElementById('preview-image').src = data.url;
+    }
 
-      <!-- Watermark -->
-      <div class="section">
-        <div class="section-title">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path
-              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-          水印设置
-        </div>
-        <div class="form-row">
-          <label>水印文字</label>
-          <input type="text" id="watermark-text" class="preview-trigger" placeholder="@您的频道" />
-        </div>
-        <div class="form-inline">
-          <div class="form-row">
-            <label>右下角 X</label>
-            <input type="number" id="watermark-pos-x" class="preview-trigger" value="1820" />
-          </div>
-          <div class="form-row">
-            <label>右下角 Y</label>
-            <input type="number" id="watermark-pos-y" class="preview-trigger" value="1000" />
-          </div>
-        </div>
-        <div class="form-3col">
-          <div class="form-row">
-            <label>字号</label>
-            <input type="number" id="watermark-font-size" class="preview-trigger" value="30" />
-          </div>
-          <div class="form-row">
-            <label>颜色</label>
-            <input type="color" id="watermark-color" class="preview-trigger" value="#ffffff" />
-          </div>
-          <div></div>
-        </div>
-      </div>
+    function log(msg) {
+        const consoleEl = document.getElementById('log-console');
+        consoleEl.innerHTML += `> ${msg}\n`;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
 
-      <!-- Text Layers -->
-      <div style="border-bottom: 1px solid var(--border); padding: 10px 16px 4px; ">
-        <div class="section-title" style="margin-bottom:0">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="4 7 4 4 20 4 20 7" />
-            <line x1="9" y1="20" x2="15" y2="20" />
-            <line x1="12" y1="4" x2="12" y2="20" />
-          </svg>
-          文字图层样式
-        </div>
-      </div>
+    function buildVideo() {
+        const cfg = gatherForm();
+        if(!cfg) return;
+        
+        document.getElementById('progress-bar').style.width = '0%';
+        log("Initializing pipeline...");
 
-      <!-- Layer 1 -->
-      <div class="layer-header" onclick="">
-        <div class="layer-name">
-          <span class="layer-dot" style="background:#FF4444"></span>
-          文字层 1 (正文)
-          <span class="pos-badge" id="pos-badge-1">100, 200</span>
-        </div>
-        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
-      <div class="layer-content open">
-        <div class="form-inline">
-          <div class="form-row">
-            <label>X 位置</label>
-            <input type="number" id="t1-pos-x" class="preview-trigger" value="100" />
-          </div>
-          <div class="form-row">
-            <label>Y 位置</label>
-            <input type="number" id="t1-pos-y" class="preview-trigger" value="200" />
-          </div>
-        </div>
-        <div class="form-3col">
-          <div class="form-row">
-            <label>字号</label>
-            <input type="number" id="t1-font-size" class="preview-trigger" value="100" />
-          </div>
-          <div class="form-row">
-            <label>颜色</label>
-            <input type="color" id="t1-color" class="preview-trigger" value="#ffffff" />
-          </div>
-          <div></div>
-        </div>
-        <div class="form-row">
-          <label>字体文件</label>
-          <select id="t1-font-file" class="font-select preview-trigger"></select>
-        </div>
-      </div>
+        fetch('/api/preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(cfg)
+        }).then(() => {
+            const source = new EventSource('/api/build');
+            
+            source.addEventListener('log', e => log(JSON.parse(e.data).msg || JSON.parse(e.data)));
+            source.addEventListener('progress', e => {
+                const data = JSON.parse(e.data);
+                document.getElementById('progress-bar').style.width = `${data.pct}%`;
+                log(`[PROGRESS] ${data.pct}% - ${data.msg}`);
+            });
+            source.addEventListener('done', e => {
+                log(`SUCCESS: Saved to ${JSON.parse(e.data).msg || JSON.parse(e.data)}`);
+                document.getElementById('progress-bar').style.width = `100%`;
+                source.close();
+            });
+            source.addEventListener('error', e => {
+                log(`ERROR: ${JSON.parse(e.data).msg}`);
+                source.close();
+            });
+        });
+    }
 
-      <!-- Layer 2 -->
-      <div class="layer-header">
-        <div class="layer-name">
-          <span class="layer-dot" style="background:#44FF88"></span>
-          文字层 2 (正文)
-          <span class="pos-badge" id="pos-badge-2">100, 430</span>
-        </div>
-        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
-      <div class="layer-content">
-        <div class="form-inline">
-          <div class="form-row">
-            <label>X 位置</label>
-            <input type="number" id="t2-pos-x" class="preview-trigger" value="100" />
-          </div>
-          <div class="form-row">
-            <label>Y 位置</label>
-            <input type="number" id="t2-pos-y" class="preview-trigger" value="430" />
-          </div>
-        </div>
-        <div class="form-3col">
-          <div class="form-row">
-            <label>字号</label>
-            <input type="number" id="t2-font-size" class="preview-trigger" value="65" />
-          </div>
-          <div class="form-row">
-            <label>颜色</label>
-            <input type="color" id="t2-color" class="preview-trigger" value="#ffffff" />
-          </div>
-          <div></div>
-        </div>
-        <div class="form-row">
-          <label>字体文件</label>
-          <select id="t2-font-file" class="font-select preview-trigger"></select>
-        </div>
-      </div>
-
-      <!-- Layer 3 -->
-      <div class="layer-header">
-        <div class="layer-name">
-          <span class="layer-dot" style="background:#4488FF"></span>
-          文字层 3 (注释)
-          <span class="pos-badge" id="pos-badge-3">100, 600</span>
-        </div>
-        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
-      <div class="layer-content">
-        <div class="form-inline">
-          <div class="form-row">
-            <label>X 位置</label>
-            <input type="number" id="t3-pos-x" class="preview-trigger" value="100" />
-          </div>
-          <div class="form-row">
-            <label>Y 位置</label>
-            <input type="number" id="t3-pos-y" class="preview-trigger" value="600" />
-          </div>
-        </div>
-        <div class="form-3col">
-          <div class="form-row">
-            <label>字号</label>
-            <input type="number" id="t3-font-size" class="preview-trigger" value="45" />
-          </div>
-          <div class="form-row">
-            <label>颜色</label>
-            <input type="color" id="t3-color" class="preview-trigger" value="#ffffff" />
-          </div>
-          <div></div>
-        </div>
-        <div class="form-row">
-          <label>字体文件</label>
-          <select id="t3-font-file" class="font-select preview-trigger"></select>
-        </div>
-      </div>
-
-      <!-- Layer 4 -->
-      <div class="layer-header">
-        <div class="layer-name">
-          <span class="layer-dot" style="background:#FFB344"></span>
-          文字层 4 [标签]
-          <span class="pos-badge" id="pos-badge-4">100, 430</span>
-        </div>
-        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
-      <div class="layer-content">
-        <div class="form-inline">
-          <div class="form-row">
-            <label>X 位置</label>
-            <input type="number" id="t4-pos-x" class="preview-trigger" value="100" />
-          </div>
-          <div class="form-row">
-            <label>Y 位置</label>
-            <input type="number" id="t4-pos-y" class="preview-trigger" value="430" />
-          </div>
-        </div>
-        <div class="form-3col">
-          <div class="form-row">
-            <label>字号</label>
-            <input type="number" id="t4-font-size" class="preview-trigger" value="65" />
-          </div>
-          <div class="form-row">
-            <label>颜色</label>
-            <input type="color" id="t4-color" class="preview-trigger" value="#e0e0e0" />
-          </div>
-          <div></div>
-        </div>
-        <div class="form-row">
-          <label>字体文件</label>
-          <select id="t4-font-file" class="font-select preview-trigger"></select>
-        </div>
-      </div>
-
-    </aside>
-
-    <!-- ══════════════════════════════════════════════ CENTER PANEL -->
-    <main id="panel-center">
-      <div id="preview-container">
-        <img id="preview-img" src="" alt="预览" style="display:none" />
-        <div id="preview-placeholder">
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-          <div>设置参数后将在此显示预览</div>
-        </div>
-      </div>
-
-      <!-- Preview toolbar -->
-      <div id="preview-toolbar">
-        <label>点击图层定位：</label>
-        <select id="click-target-select">
-          <option value="1">层 1 (红色)</option>
-          <option value="2">层 2 (绿色)</option>
-          <option value="3">层 3 (蓝色)</option>
-          <option value="4">层 4 (橙色)</option>
-          <option value="watermark">水印</option>
-        </select>
-        <label style="margin-left:12px">预览第</label>
-        <input type="number" id="preview-row" value="1" min="1"
-          style="width:44px;background:transparent;border:none;color:var(--accent);font-size:12px;text-align:center;outline:none" />
-        <label>行</label>
-        <label style="margin-left:12px">模拟第</label>
-        <input type="number" id="preview-repeat-num" value="1" min="1" max="10"
-          style="width:36px;background:transparent;border:none;color:var(--accent);font-size:12px;text-align:center;outline:none"
-          onchange="debouncedPreview()" oninput="debouncedPreview()" />
-        <label>遍朗读效果</label>
-        <button class="btn btn-secondary btn-sm" onclick="requestPreview()" style="margin-left:8px">刷新</button>
-      </div>
-    </main>
-
-    <!-- ══════════════════════════════════════════════ RIGHT PANEL -->
-    <aside id="panel-right">
-
-      <!-- Text Lists -->
-      <div class="section">
-        <div class="section-title">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6" />
-            <line x1="8" y1="12" x2="21" y2="12" />
-            <line x1="8" y1="18" x2="21" y2="18" />
-            <line x1="3" y1="6" x2="3.01" y2="6" />
-            <line x1="3" y1="12" x2="3.01" y2="12" />
-            <line x1="3" y1="18" x2="3.01" y2="18" />
-          </svg>
-          文本列表 <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0">(每行一条)</span>
-        </div>
-
-        <!-- Tab strip -->
-        <div class="tab-strip" style="padding:0 0 0 0;margin-bottom:12px">
-          <button class="tab-btn active" data-group="texts" data-tab="tab-t1">
-            <span class="layer-dot"
-              style="background:#FF4444;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>列表
-            1
-          </button>
-          <button class="tab-btn" data-group="texts" data-tab="tab-t2">
-            <span class="layer-dot"
-              style="background:#44FF88;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>列表
-            2
-          </button>
-          <button class="tab-btn" data-group="texts" data-tab="tab-t3">
-            <span class="layer-dot"
-              style="background:#4488FF;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>列表
-            3
-          </button>
-          <button class="tab-btn" data-group="texts" data-tab="tab-t4">
-            <span class="layer-dot"
-              style="background:#FFB344;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>列表
-            4
-          </button>
-        </div>
-
-        <div id="tab-t1" class="tab-content active" data-tab-group="texts">
-          <div class="text-panel-header">
-            <label>
-              <span class="layer-dot"
-                style="background:#FF4444;width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-              文本列表 1 <em style="color:var(--text-muted);font-size:10px;font-weight:400">大标题 · 驱动 TTS</em>
-            </label>
-            <span class="text-count-badge" id="count-badge-1">0 行</span>
-          </div>
-          <textarea id="texts-1" class="text-list" placeholder="每行输入一条文本&#10;flood&#10;wedding&#10;devotion"></textarea>
-        </div>
-        <div id="tab-t2" class="tab-content" data-tab-group="texts">
-          <div class="text-panel-header">
-            <label>
-              <span class="layer-dot"
-                style="background:#44FF88;width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-              文本列表 2 <em style="color:var(--text-muted);font-size:10px;font-weight:400">中文释义</em>
-            </label>
-            <span class="text-count-badge" id="count-badge-2">0 行</span>
-          </div>
-          <textarea id="texts-2" class="text-list" placeholder="每行一条中文翻译&#10;洪水、水灾&#10;婚礼&#10;奉献"></textarea>
-        </div>
-        <div id="tab-t3" class="tab-content" data-tab-group="texts">
-          <div class="text-panel-header">
-            <label>
-              <span class="layer-dot"
-                style="background:#4488FF;width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-              文本列表 3 <em style="color:var(--text-muted);font-size:10px;font-weight:400">例句</em>
-            </label>
-            <span class="text-count-badge" id="count-badge-3">0 行</span>
-          </div>
-          <textarea id="texts-3" class="text-list" placeholder="每行一条例句或注释"></textarea>
-        </div>
-        <div id="tab-t4" class="tab-content" data-tab-group="texts">
-          <div class="text-panel-header">
-            <label>
-              <span class="layer-dot"
-                style="background:#FFB344;width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-              文本列表 4 <em style="color:var(--text-muted);font-size:10px;font-weight:400">[标签]</em>
-            </label>
-            <span class="text-count-badge" id="count-badge-4">0 行</span>
-          </div>
-          <textarea id="texts-4" class="text-list" placeholder="每行一个词性标签&#10;n.&#10;v.&#10;adj."></textarea>
-        </div>
-      </div>
-
-      <!-- Behavior Settings -->
-      <div class="section">
-        <div class="section-title">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93A10 10 0 0 0 19.07 19.07" />
-          </svg>
-          行为设置
-        </div>
-
-        <div class="form-row">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <label>每条朗读次数</label>
-            <span style="font-size:12px;color:var(--accent);font-weight:600" id="repeat-count-disp">1</span>
-          </div>
-          <input type="range" id="repeat-count" min="1" max="10" step="1" value="1" class="preview-trigger" />
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
-            <span>1次</span><span>5</span><span>10次</span>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <label>停顿时长倍数 <span style="font-size:10px;color:var(--text-muted)">(朗读时长 × N 秒停顿)</span></label>
-            <span style="font-size:12px;color:var(--accent);font-weight:600" id="silent-multiplier-disp">2.5</span>
-          </div>
-          <input type="range" id="silent-multiplier" min="0" max="5" step="0.1" value="2.5" class="preview-trigger" />
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
-            <span>0</span><span>2.5</span><span>5x</span>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <label>TTS 请求间隔 (秒)</label>
-            <span style="font-size:12px;color:var(--accent);font-weight:600" id="tts-delay-disp">0.5</span>
-          </div>
-          <input type="range" id="tts-delay" min="0" max="5" step="0.1" value="0.5" class="preview-trigger" />
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
-            <span>0s</span><span>2.5s</span><span>5s</span>
-          </div>
-        </div>
-
-        <div class="form-row" style="margin-top:8px">
-          <label>输出文件名</label>
-          <input type="text" id="output-filename" value="output_video.mp4" placeholder="output_video.mp4" />
-        </div>
-
-        <div class="form-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-          <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span class="layer-dot"
-              style="background:#4488FF;width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-            从第 <strong style="color:var(--accent)">N</strong> 次朗读起显示中文释义
-            <span style="font-size:10px;color:var(--text-muted)">(文本列表 3)</span>
-          </label>
-          <select id="show-t3-from" class="preview-trigger">
-            <option value="0">永不显示 (仅显于英文+音标)</option>
-            <option value="1" selected>第 1 次起始终显示</option>
-            <option value="2">从第 2 次起显示</option>
-            <option value="3">从第 3 次起显示</option>
-            <option value="4">从第 4 次起显示</option>
-            <option value="5">从第 5 次起显示</option>
-          </select>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
-            示例：重复3次 + 从第2次起 → 第1遍无中文、第2~3遍显示中文
-          </div>
-        </div>
-      </div>
-
-      <!-- Progress -->
-      <div id="progress-section">
-        <div class="section-title" style="margin-bottom:10px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-          </svg>
-          生成进度
-        </div>
-        <div class="progress-label">
-          <span>总进度</span>
-          <span id="progress-label">0%</span>
-        </div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="overall-progress"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">TTS</div>
-            <div class="progress-bar-wrap" style="height:4px">
-              <div class="progress-bar-fill" id="progress-tts"></div>
-            </div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">图片</div>
-            <div class="progress-bar-wrap" style="height:4px">
-              <div class="progress-bar-fill" id="progress-images"></div>
-            </div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">视频</div>
-            <div class="progress-bar-wrap" style="height:4px">
-              <div class="progress-bar-fill" id="progress-video"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Generate Button -->
-      <div id="generate-area">
-        <button class="btn btn-primary" id="btn-generate">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          开始生成视频
-        </button>
-        <button class="btn btn-secondary" id="btn-resume"
-          title="跳过TTS和图片生成，直接用现有文件继续制作视频"
-          style="margin-top:8px;width:100%;justify-content:center;gap:8px;opacity:0.85">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5.67"/>
-          </svg>
-          继续生成（跳过TTS/图片）
-        </button>
-      </div>
-
-      <!-- Log -->
-      <div style="padding:8px 14px 4px;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div
-            style="font-size:10px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase">
-            日志输出</div>
-          <button class="btn btn-secondary btn-sm" onclick="clearLog()"
-            style="font-size:10px;padding:2px 8px">清空</button>
-        </div>
-      </div>
-      <div id="log-panel"></div>
-
-    </aside>
-
-    <!-- ══════════════════════════════════════════════ STATUS BAR -->
-    <footer id="statusbar">
-      <span class="status-dot idle" id="status-dot"></span>
-      <span id="status-text">就绪</span>
-      <span style="flex:1"></span>
-      <span style="font-size:10px">点击预览图可定位文字层位置</span>
-    </footer>
-
-  </div>
-
-  <!-- Toast -->
-  <div id="toast"></div>
-
-  <script src="/static/js/app.js"></script>
+    window.onload = loadConfig;
+</script>
 </body>
-
 </html>
