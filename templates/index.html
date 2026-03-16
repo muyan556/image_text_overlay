@@ -30,7 +30,7 @@
         }
 
         .editor-panel {
-            width: 420px;
+            width: 440px;
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
@@ -142,7 +142,6 @@
             transition: opacity 0.2s;
         }
 
-        /* 翻页控制器 */
         .pagination {
             display: flex;
             align-items: center;
@@ -216,82 +215,103 @@
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 15px; flex-direction: column;">
-            <button class="primary" onclick="buildVideo()">🚀 开始生成视频</button>
+            <button class="primary" onclick="buildVideo()">🚀 开始极速合并视频</button>
         </div>
     </div>
 
     <div class="panel preview-panel">
         <img id="preview-image" class="preview-img" src="" alt="实时预览加载中..." />
-
         <div class="pagination">
             <button onclick="changePreview(-1)">⬅️ 上一项</button>
             <span id="preview-counter">当前: 1 / 1</span>
             <button onclick="changePreview(1)">下一项 ➡️</button>
         </div>
-
         <div class="progress-bar-container">
             <div id="progress-bar" class="progress-bar"></div>
         </div>
-        <div id="log-console" class="log-box">系统就绪。等待指令...\n</div>
+        <div id="log-console" class="log-box">系统就绪，支持 TS 极速无损合并。\n</div>
     </div>
 
     <script>
         let currentConfig = {};
-        let previewIndex = 0; // 当前预览的项索引
-        let previewTimer = null; // 防抖定时器
-        const textLayers = ['text1', 'text2', 'text3', 'text4'];
+        let previewIndex = 0;
+        let previewTimer = null;
 
-        // 渲染排版表单
+        // 包括新加的水印和序列层
+        const layoutLayers = [
+            { key: 'text1', name: 'TEXT 1 (主内容)' },
+            { key: 'text2', name: 'TEXT 2 (辅内容)' },
+            { key: 'text3', name: 'TEXT 3 (翻译)' },
+            { key: 'text4', name: 'TEXT 4 (标签)' },
+            { key: 'watermark', name: '水印 (WATERMARK)' },
+            { key: 'sequence', name: '序列号 (INDEX)' }
+        ];
+
         function renderLayoutForm(cfg) {
             const form = document.getElementById('layout-form');
             form.innerHTML = '';
 
-            textLayers.forEach(key => {
+            layoutLayers.forEach(layer => {
+                const key = layer.key;
+                // 处理旧配置升级情况，赋予默认值
+                if (!cfg.layout[key]) {
+                    if (key === 'watermark') cfg.layout[key] = { text: "@MyChannel", x: 1700, y: 950, size: 30, opacity: 0.5, color: "#000000", font: "MiSans-Normal.ttf" };
+                    else if (key === 'sequence') cfg.layout[key] = { x: 50, y: 50, size: 40, opacity: 0.8, color: "#000000", font: "MiSans-Heavy.ttf" };
+                    else cfg.layout[key] = { x: 100, y: 100, size: 50, opacity: 1, color: "#000000", font: "MiSans-Normal.ttf" };
+                }
+
                 const layout = cfg.layout[key];
-                if (!layout) return;
+                let extraHTML = '';
+
+                // 如果是水印，多一个文字框
+                if (key === 'watermark') {
+                    extraHTML = `<div class="form-group"><label>水印内容</label><input type="text" id="${key}-text" value="${layout.text || ''}" oninput="debouncedPreview()"></div>`;
+                }
+
                 form.innerHTML += `
             <div style="border-left: 4px solid #E0E0E0; padding-left: 15px; margin-top: 5px;">
-                <strong style="font-size: 0.9rem; color: #333; text-transform: uppercase;">${key} 样式</strong>
+                <strong style="font-size: 0.9rem; color: #333;">${layer.name}</strong>
+                ${extraHTML}
                 <div class="row" style="margin-top: 8px;">
                     <div class="form-group"><label>X 坐标</label><input type="number" id="${key}-x" value="${layout.x}" oninput="debouncedPreview()"></div>
                     <div class="form-group"><label>Y 坐标</label><input type="number" id="${key}-y" value="${layout.y}" oninput="debouncedPreview()"></div>
                     <div class="form-group"><label>字号</label><input type="number" id="${key}-size" value="${layout.size}" oninput="debouncedPreview()"></div>
                 </div>
                 <div class="row">
-                    <div class="form-group"><label>透明度 (0-1)</label><input type="number" step="0.1" max="1" min="0" id="${key}-opacity" value="${layout.opacity}" oninput="debouncedPreview()"></div>
+                    <div class="form-group"><label>透明度(0-1)</label><input type="number" step="0.1" max="1" min="0" id="${key}-opacity" value="${layout.opacity}" oninput="debouncedPreview()"></div>
                     <div class="form-group"><label>颜色</label><input type="color" id="${key}-color" value="${layout.color}" style="padding: 2px; height:34px;" onchange="debouncedPreview()"></div>
                 </div>
                 <div class="form-group">
-                    <label>字体文件</label>
+                    <label>字体</label>
                     <select id="${key}-font" onchange="debouncedPreview()">
-                        <option value="MiSans-Heavy.ttf" ${layout.font === 'MiSans-Heavy.ttf' ? 'selected' : ''}>MiSans Heavy (重体)</option>
-                        <option value="MiSans-Normal.ttf" ${layout.font === 'MiSans-Normal.ttf' ? 'selected' : ''}>MiSans Normal (常规)</option>
-                        <option value="MiSans-Light.ttf" ${layout.font === 'MiSans-Light.ttf' ? 'selected' : ''}>MiSans Light (细体)</option>
+                        <option value="MiSans-Heavy.ttf" ${layout.font === 'MiSans-Heavy.ttf' ? 'selected' : ''}>MiSans Heavy (重)</option>
+                        <option value="MiSans-Normal.ttf" ${layout.font === 'MiSans-Normal.ttf' ? 'selected' : ''}>MiSans Normal (常)</option>
+                        <option value="MiSans-Light.ttf" ${layout.font === 'MiSans-Light.ttf' ? 'selected' : ''}>MiSans Light (细)</option>
                         <option value="MiSans-ExtraLight.ttf" ${layout.font === 'MiSans-ExtraLight.ttf' ? 'selected' : ''}>MiSans ExtraLight (极细)</option>
-                        <option value="msyh.ttc" ${layout.font === 'msyh.ttc' ? 'selected' : ''}>微软雅黑 (系统兜底)</option>
+                        <option value="msyh.ttc" ${layout.font === 'msyh.ttc' ? 'selected' : ''}>微软雅黑 (系统)</option>
                     </select>
                 </div>
             </div>`;
             });
         }
 
-        // 初始化数据填充
         function initDataForm(cfg) {
-            textLayers.forEach(key => {
-                const arr = cfg.texts[key] || [];
-                document.getElementById(`data-${key}`).value = arr.join('\n');
+            ['text1', 'text2', 'text3', 'text4'].forEach(key => {
+                document.getElementById(`data-${key}`).value = (cfg.texts[key] || []).join('\n');
             });
         }
 
-        // 从表单收集最新数据
         function gatherForm() {
-            textLayers.forEach(key => {
-                // 将文本框内容按回车分割，去除两端空格（保留空行以防用户故意留空）
+            ['text1', 'text2', 'text3', 'text4'].forEach(key => {
                 currentConfig.texts[key] = document.getElementById(`data-${key}`).value.split('\n').map(s => s.trim());
             });
 
-            textLayers.forEach(key => {
-                if (!currentConfig.layout[key]) return;
+            layoutLayers.forEach(layer => {
+                const key = layer.key;
+                if (!currentConfig.layout[key]) currentConfig.layout[key] = {};
+
+                if (key === 'watermark') currentConfig.layout[key].text = document.getElementById(`${key}-text`).value;
+
                 currentConfig.layout[key].x = parseInt(document.getElementById(`${key}-x`).value) || 0;
                 currentConfig.layout[key].y = parseInt(document.getElementById(`${key}-y`).value) || 0;
                 currentConfig.layout[key].size = parseInt(document.getElementById(`${key}-size`).value) || 50;
@@ -302,96 +322,71 @@
             return currentConfig;
         }
 
-        // 翻页逻辑
         function changePreview(step) {
             const cfg = gatherForm();
-            // 算出最大行数
             const maxLen = Math.max(cfg.texts.text1.length, cfg.texts.text2.length, cfg.texts.text3.length, cfg.texts.text4.length);
 
             previewIndex += step;
             if (previewIndex < 0) previewIndex = 0;
-            if (previewIndex >= maxLen) previewIndex = maxLen - 1;
-            if (previewIndex < 0) previewIndex = 0; // 防止内容完全为空
+            if (previewIndex >= maxLen) previewIndex = Math.max(0, maxLen - 1);
 
             updatePreview();
         }
 
-        // 更新翻页器的文字状态
         function updateCounter(cfg) {
             const maxLen = Math.max(1, cfg.texts.text1.length, cfg.texts.text2.length, cfg.texts.text3.length, cfg.texts.text4.length);
-            document.getElementById('preview-counter').innerText = `预览: 第 ${previewIndex + 1} 项 / 共 ${maxLen} 项`;
+            document.getElementById('preview-counter').innerText = `当前: ${previewIndex + 1} / 共 ${maxLen}`;
         }
 
-        // 防抖：0.5秒内没有新输入才触发预览
         function debouncedPreview() {
             clearTimeout(previewTimer);
-            const img = document.getElementById('preview-image');
-            img.style.opacity = '0.5'; // 提示正在加载
+            document.getElementById('preview-image').style.opacity = '0.5';
             previewTimer = setTimeout(updatePreview, 500);
         }
 
-        // 向后端请求生成预览图
         async function updatePreview() {
             const cfg = gatherForm();
             if (!cfg) return;
-
             updateCounter(cfg);
-
-            const payload = {
-                config: cfg,
-                preview_index: previewIndex
-            };
-
             const res = await fetch('/api/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ config: cfg, preview_index: previewIndex })
             });
-
             const data = await res.json();
             const img = document.getElementById('preview-image');
             img.src = data.url;
             img.style.opacity = '1';
         }
 
-        // 初次加载配置
         async function loadConfig() {
             const res = await fetch('/api/config');
             currentConfig = await res.json();
-
-            // 如果后端传来的配置里没有text2/4，给个默认空数组兜底
             if (!currentConfig.texts.text2) currentConfig.texts.text2 = [];
             if (!currentConfig.texts.text4) currentConfig.texts.text4 = [];
-
             initDataForm(currentConfig);
             renderLayoutForm(currentConfig);
             updatePreview();
         }
 
-        // 打印日志
         function log(msg) {
-            const consoleEl = document.getElementById('log-console');
-            consoleEl.innerHTML += `> ${msg}\n`;
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+            const el = document.getElementById('log-console');
+            el.innerHTML += `> ${msg}\n`;
+            el.scrollTop = el.scrollHeight;
         }
 
-        // 触发生成
         function buildVideo() {
             const cfg = gatherForm();
             if (!cfg) return;
-
             document.getElementById('progress-bar').style.width = '0%';
-            log("开始初始化生成管线...");
+            log("初始化 TS 极速拼接管线...");
 
-            // 生成时默认把配置存回去
-            const payload = { config: cfg, preview_index: 0 };
             fetch('/api/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ config: cfg, preview_index: 0 })
             }).then(() => {
                 const source = new EventSource('/api/build');
-
                 source.addEventListener('log', e => log(JSON.parse(e.data).msg || JSON.parse(e.data)));
                 source.addEventListener('progress', e => {
                     const data = JSON.parse(e.data);

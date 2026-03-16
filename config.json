@@ -39,13 +39,21 @@
       "y": 2000
     },
     "watermark": {
-      "color": "#000000",
+      "color": "#ffffff",
       "font": "MiSans-Normal.ttf",
-      "opacity": 0.3,
-      "size": 30,
-      "text": "@YourChannel",
-      "x": 1800,
-      "y": 1000
+      "opacity": 0.45,
+      "size": 26,
+      "text": "@慕言556",
+      "x": 880,
+      "y": 510
+    },
+    "sequence": {
+      "x": 900,
+      "y": 420,
+      "size": 40,
+      "opacity": 1,
+      "color": "#ffffff",
+      "font": "MiSans-Heavy.ttf"
     }
   },
   "paths": {
