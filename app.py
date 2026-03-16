@@ -3,7 +3,7 @@ import json
 from flask import Flask, render_template, request, jsonify, Response
 from engine import VideoEngine
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CONFIG_PATH = "config.json"
 
 @app.route('/')
@@ -38,7 +38,6 @@ def preview_frame():
     t1, t2 = get_text(cfg['texts']['text1'], idx), get_text(cfg['texts']['text2'], idx)
     t3, t4 = get_text(cfg['texts']['text3'], idx), get_text(cfg['texts']['text4'], idx)
     
-    # 传入实际显示的数字 (idx + 1) 给序列号渲染器
     out_path = engine.generate_image(t1, t2, t3, t4, index=idx+1, show_t3=True, preview_path="static/preview.png")
     return jsonify({"url": f"/static/preview.png?t={os.path.getmtime(out_path)}"})
 
