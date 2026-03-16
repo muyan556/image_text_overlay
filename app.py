@@ -25,20 +25,29 @@ def handle_config():
 
 @app.route('/api/preview', methods=['POST'])
 def preview_frame():
-    """接收最新参数，生成一张预览图并返回给前端"""
-    cfg = request.json
+    """接收最新参数和预览索引，生成单张预览图"""
+    data = request.json
+    cfg = data.get('config')
+    idx = data.get('preview_index', 0)
+    
+    # 保存配置
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
         
     engine = VideoEngine(CONFIG_PATH)
-    t1 = cfg['texts']['text1'][0] if cfg['texts']['text1'] else ""
-    t2 = cfg['texts']['text2'][0] if cfg['texts']['text2'] else ""
-    t3 = cfg['texts']['text3'][0] if cfg['texts']['text3'] else ""
-    t4 = cfg['texts']['text4'][0] if cfg['texts']['text4'] else ""
+    
+    # 安全获取指定索引的文本内容（如果该行不存在则为空）
+    def get_text(text_list, i):
+        return text_list[i] if text_list and i < len(text_list) else ""
+        
+    t1 = get_text(cfg['texts']['text1'], idx)
+    t2 = get_text(cfg['texts']['text2'], idx)
+    t3 = get_text(cfg['texts']['text3'], idx)
+    t4 = get_text(cfg['texts']['text4'], idx)
     
     out_path = engine.generate_image(t1, t2, t3, t4, "preview", show_t3=True, preview_path="static/preview.png")
     return jsonify({"url": f"/static/preview.png?t={os.path.getmtime(out_path)}"})
-
+    
 @app.route('/api/build', methods=['GET'])
 def build_video():
     """SSE 流式推送编译进度"""

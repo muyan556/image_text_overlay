@@ -1,173 +1,417 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
-    <title>Video Synth Console</title>
+    <title>音画合成引擎控制台</title>
     <style>
-        :root { --bg: #F5F5F5; --surface: #FFFFFF; --text: #111111; --border: #DDDDDD; --accent: #000000; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-        .panel { padding: 25px; background: var(--surface); overflow-y: auto; }
-        .editor-panel { width: 420px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10;}
-        .preview-panel { flex: 1; display: flex; flex-direction: column; align-items: center; background: #EAEAEA; padding-top: 40px;}
-        
-        h2 { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 10px 0; border-bottom: 2px solid var(--accent); padding-bottom: 8px; display: inline-block;}
-        
-        .form-group { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; margin-bottom: 8px;}
-        .form-group label { font-weight: 600; color: #555; }
-        .row { display: flex; gap: 12px; }
-        .row > * { flex: 1; }
-        
-        input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 4px; background: #FAFAFA; font-family: inherit; outline: none; transition: all 0.2s; }
-        input:focus, textarea:focus, select:focus { border-color: var(--accent); background: #FFF; box-shadow: 0 0 0 2px rgba(0,0,0,0.05);}
-        
-        button { padding: 14px; background: var(--surface); color: var(--text); font-weight: bold; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
-        button:hover { background: var(--accent); color: var(--surface); }
-        button.primary { background: var(--accent); color: var(--surface); margin-top: 10px;}
-        button.primary:hover { opacity: 0.8; }
+        :root {
+            --bg: #F5F5F5;
+            --surface: #FFFFFF;
+            --text: #111111;
+            --border: #DDDDDD;
+            --accent: #000000;
+        }
 
-        .preview-img { max-width: 90%; max-height: 55vh; border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-radius: 4px; background: #FFF;}
-        
-        .log-box { width: 90%; max-width: 1200px; flex: 1; margin: 30px 0; background: #1E1E1E; color: #4AF626; font-family: "Courier New", monospace; padding: 20px; font-size: 0.85rem; overflow-y: auto; border-radius: 6px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);}
-        .progress-bar-container { width: 90%; max-width: 1200px; height: 6px; background: #DDD; margin-top: 20px; border-radius: 3px; overflow: hidden;}
-        .progress-bar { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .panel {
+            padding: 25px;
+            background: var(--surface);
+            overflow-y: auto;
+        }
+
+        .editor-panel {
+            width: 420px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+            z-index: 10;
+            padding-bottom: 50px;
+        }
+
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #EAEAEA;
+            padding-top: 40px;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 8px;
+            display: inline-block;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .row>* {
+            flex: 1;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #FAFAFA;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s;
+            line-height: 1.5;
+            resize: vertical;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--accent);
+            background: #FFF;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+        }
+
+        button {
+            padding: 12px;
+            background: var(--surface);
+            color: var(--text);
+            font-weight: bold;
+            border: 2px solid var(--accent);
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: var(--surface);
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: var(--surface);
+            margin-top: 10px;
+        }
+
+        button.primary:hover {
+            opacity: 0.8;
+        }
+
+        .preview-img {
+            max-width: 90%;
+            max-height: 55vh;
+            border: 1px solid var(--border);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            background: #FFF;
+            transition: opacity 0.2s;
+        }
+
+        /* 翻页控制器 */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .pagination button {
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            border-width: 1px;
+            border-radius: 20px;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .log-box {
+            width: 90%;
+            max-width: 1200px;
+            flex: 1;
+            margin: 20px 0;
+            background: #1E1E1E;
+            color: #4AF626;
+            font-family: "Courier New", monospace;
+            padding: 20px;
+            font-size: 0.85rem;
+            overflow-y: auto;
+            border-radius: 6px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-bar-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 6px;
+            background: #DDD;
+            margin-top: 20px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="panel editor-panel">
-    <h2>Data & Layout</h2>
-    <div id="config-form" style="display: flex; flex-direction: column; gap: 10px;">
+    <div class="panel editor-panel">
+        <h2>内容数据 (一行一项)</h2>
+        <div id="data-form" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="form-group"><label>Text 1 (主内容)</label><textarea id="data-text1" rows="3"
+                    oninput="debouncedPreview()"></textarea></div>
+            <div class="form-group"><label>Text 2 (辅内容/音标)</label><textarea id="data-text2" rows="3"
+                    oninput="debouncedPreview()"></textarea></div>
+            <div class="form-group"><label>Text 3 (中文翻译)</label><textarea id="data-text3" rows="3"
+                    oninput="debouncedPreview()"></textarea></div>
+            <div class="form-group"><label>Text 4 (词性/标签)</label><textarea id="data-text4" rows="3"
+                    oninput="debouncedPreview()"></textarea></div>
         </div>
-    <div style="display: flex; gap: 10px; margin-top: 10px; flex-direction: column;">
-        <button onclick="updatePreview()">Refresh Preview</button>
-        <button class="primary" onclick="buildVideo()">Build Final Video</button>
+
+        <h2 style="margin-top: 10px;">样式排版</h2>
+        <div id="layout-form" style="display: flex; flex-direction: column; gap: 10px;">
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px; flex-direction: column;">
+            <button class="primary" onclick="buildVideo()">🚀 开始生成视频</button>
+        </div>
     </div>
-</div>
 
-<div class="panel preview-panel">
-    <img id="preview-image" class="preview-img" src="" alt="Live Preview..." />
-    <div class="progress-bar-container"><div id="progress-bar" class="progress-bar"></div></div>
-    <div id="log-console" class="log-box">SYSTEM READY. WAITING FOR COMMANDS...\n</div>
-</div>
+    <div class="panel preview-panel">
+        <img id="preview-image" class="preview-img" src="" alt="实时预览加载中..." />
 
-<script>
-    let currentConfig = {};
-    const textLayers = ['text1', 'text2', 'text3', 'text4'];
+        <div class="pagination">
+            <button onclick="changePreview(-1)">⬅️ 上一项</button>
+            <span id="preview-counter">当前: 1 / 1</span>
+            <button onclick="changePreview(1)">下一项 ➡️</button>
+        </div>
 
-    function renderForm(cfg) {
-        const form = document.getElementById('config-form');
-        form.innerHTML = '';
-        
-        // Data Inputs
-        form.innerHTML += `<div class="form-group"><label>Text 1 (JSON Array)</label><textarea id="data-text1" rows="2">${JSON.stringify(cfg.texts.text1)}</textarea></div>`;
-        form.innerHTML += `<div class="form-group"><label>Text 3 (JSON Array)</label><textarea id="data-text3" rows="2">${JSON.stringify(cfg.texts.text3)}</textarea></div>`;
-        
-        // Layout Inputs
-        textLayers.forEach(key => {
-            const layout = cfg.layout[key];
-            if(!layout) return;
-            form.innerHTML += `
-            <div style="border-left: 4px solid #E0E0E0; padding-left: 15px; margin-top: 10px;">
-                <strong style="font-size: 0.9rem; color: #333;">${key.toUpperCase()} STYLE</strong>
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="log-console" class="log-box">系统就绪。等待指令...\n</div>
+    </div>
+
+    <script>
+        let currentConfig = {};
+        let previewIndex = 0; // 当前预览的项索引
+        let previewTimer = null; // 防抖定时器
+        const textLayers = ['text1', 'text2', 'text3', 'text4'];
+
+        // 渲染排版表单
+        function renderLayoutForm(cfg) {
+            const form = document.getElementById('layout-form');
+            form.innerHTML = '';
+
+            textLayers.forEach(key => {
+                const layout = cfg.layout[key];
+                if (!layout) return;
+                form.innerHTML += `
+            <div style="border-left: 4px solid #E0E0E0; padding-left: 15px; margin-top: 5px;">
+                <strong style="font-size: 0.9rem; color: #333; text-transform: uppercase;">${key} 样式</strong>
                 <div class="row" style="margin-top: 8px;">
-                    <div class="form-group"><label>X Pos</label><input type="number" id="${key}-x" value="${layout.x}"></div>
-                    <div class="form-group"><label>Y Pos</label><input type="number" id="${key}-y" value="${layout.y}"></div>
-                    <div class="form-group"><label>Size</label><input type="number" id="${key}-size" value="${layout.size}"></div>
+                    <div class="form-group"><label>X 坐标</label><input type="number" id="${key}-x" value="${layout.x}" oninput="debouncedPreview()"></div>
+                    <div class="form-group"><label>Y 坐标</label><input type="number" id="${key}-y" value="${layout.y}" oninput="debouncedPreview()"></div>
+                    <div class="form-group"><label>字号</label><input type="number" id="${key}-size" value="${layout.size}" oninput="debouncedPreview()"></div>
                 </div>
                 <div class="row">
-                    <div class="form-group"><label>Opacity</label><input type="number" step="0.1" max="1" min="0" id="${key}-opacity" value="${layout.opacity}"></div>
-                    <div class="form-group"><label>Color</label><input type="color" id="${key}-color" value="${layout.color}" style="padding: 2px;"></div>
+                    <div class="form-group"><label>透明度 (0-1)</label><input type="number" step="0.1" max="1" min="0" id="${key}-opacity" value="${layout.opacity}" oninput="debouncedPreview()"></div>
+                    <div class="form-group"><label>颜色</label><input type="color" id="${key}-color" value="${layout.color}" style="padding: 2px; height:34px;" onchange="debouncedPreview()"></div>
                 </div>
                 <div class="form-group">
-                    <label>Font Family</label>
-                    <select id="${key}-font">
-                        <option value="MiSans-Heavy.ttf" ${layout.font === 'MiSans-Heavy.ttf' ? 'selected' : ''}>MiSans Heavy</option>
-                        <option value="MiSans-Normal.ttf" ${layout.font === 'MiSans-Normal.ttf' ? 'selected' : ''}>MiSans Normal</option>
-                        <option value="MiSans-Light.ttf" ${layout.font === 'MiSans-Light.ttf' ? 'selected' : ''}>MiSans Light</option>
-                        <option value="MiSans-ExtraLight.ttf" ${layout.font === 'MiSans-ExtraLight.ttf' ? 'selected' : ''}>MiSans ExtraLight</option>
-                        <option value="msyh.ttc" ${layout.font === 'msyh.ttc' ? 'selected' : ''}>微软雅黑 (System)</option>
+                    <label>字体文件</label>
+                    <select id="${key}-font" onchange="debouncedPreview()">
+                        <option value="MiSans-Heavy.ttf" ${layout.font === 'MiSans-Heavy.ttf' ? 'selected' : ''}>MiSans Heavy (重体)</option>
+                        <option value="MiSans-Normal.ttf" ${layout.font === 'MiSans-Normal.ttf' ? 'selected' : ''}>MiSans Normal (常规)</option>
+                        <option value="MiSans-Light.ttf" ${layout.font === 'MiSans-Light.ttf' ? 'selected' : ''}>MiSans Light (细体)</option>
+                        <option value="MiSans-ExtraLight.ttf" ${layout.font === 'MiSans-ExtraLight.ttf' ? 'selected' : ''}>MiSans ExtraLight (极细)</option>
+                        <option value="msyh.ttc" ${layout.font === 'msyh.ttc' ? 'selected' : ''}>微软雅黑 (系统兜底)</option>
                     </select>
                 </div>
             </div>`;
-        });
-    }
-
-    function gatherForm() {
-        try {
-            currentConfig.texts.text1 = JSON.parse(document.getElementById('data-text1').value);
-            currentConfig.texts.text3 = JSON.parse(document.getElementById('data-text3').value);
-        } catch(e) { alert("Invalid JSON format in Text arrays!"); return null; }
-        
-        textLayers.forEach(key => {
-            if(!currentConfig.layout[key]) return;
-            currentConfig.layout[key].x = parseInt(document.getElementById(`${key}-x`).value);
-            currentConfig.layout[key].y = parseInt(document.getElementById(`${key}-y`).value);
-            currentConfig.layout[key].size = parseInt(document.getElementById(`${key}-size`).value);
-            currentConfig.layout[key].opacity = parseFloat(document.getElementById(`${key}-opacity`).value);
-            currentConfig.layout[key].color = document.getElementById(`${key}-color`).value;
-            currentConfig.layout[key].font = document.getElementById(`${key}-font`).value;
-        });
-        return currentConfig;
-    }
-
-    async function loadConfig() {
-        const res = await fetch('/api/config');
-        currentConfig = await res.json();
-        renderForm(currentConfig);
-        updatePreview();
-    }
-
-    async function updatePreview() {
-        const cfg = gatherForm();
-        if(!cfg) return;
-        const res = await fetch('/api/preview', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(cfg)
-        });
-        const data = await res.json();
-        document.getElementById('preview-image').src = data.url;
-    }
-
-    function log(msg) {
-        const consoleEl = document.getElementById('log-console');
-        consoleEl.innerHTML += `> ${msg}\n`;
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-    }
-
-    function buildVideo() {
-        const cfg = gatherForm();
-        if(!cfg) return;
-        
-        document.getElementById('progress-bar').style.width = '0%';
-        log("Initializing pipeline...");
-
-        fetch('/api/preview', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(cfg)
-        }).then(() => {
-            const source = new EventSource('/api/build');
-            
-            source.addEventListener('log', e => log(JSON.parse(e.data).msg || JSON.parse(e.data)));
-            source.addEventListener('progress', e => {
-                const data = JSON.parse(e.data);
-                document.getElementById('progress-bar').style.width = `${data.pct}%`;
-                log(`[PROGRESS] ${data.pct}% - ${data.msg}`);
             });
-            source.addEventListener('done', e => {
-                log(`SUCCESS: Saved to ${JSON.parse(e.data).msg || JSON.parse(e.data)}`);
-                document.getElementById('progress-bar').style.width = `100%`;
-                source.close();
-            });
-            source.addEventListener('error', e => {
-                log(`ERROR: ${JSON.parse(e.data).msg}`);
-                source.close();
-            });
-        });
-    }
+        }
 
-    window.onload = loadConfig;
-</script>
+        // 初始化数据填充
+        function initDataForm(cfg) {
+            textLayers.forEach(key => {
+                const arr = cfg.texts[key] || [];
+                document.getElementById(`data-${key}`).value = arr.join('\n');
+            });
+        }
+
+        // 从表单收集最新数据
+        function gatherForm() {
+            textLayers.forEach(key => {
+                // 将文本框内容按回车分割，去除两端空格（保留空行以防用户故意留空）
+                currentConfig.texts[key] = document.getElementById(`data-${key}`).value.split('\n').map(s => s.trim());
+            });
+
+            textLayers.forEach(key => {
+                if (!currentConfig.layout[key]) return;
+                currentConfig.layout[key].x = parseInt(document.getElementById(`${key}-x`).value) || 0;
+                currentConfig.layout[key].y = parseInt(document.getElementById(`${key}-y`).value) || 0;
+                currentConfig.layout[key].size = parseInt(document.getElementById(`${key}-size`).value) || 50;
+                currentConfig.layout[key].opacity = parseFloat(document.getElementById(`${key}-opacity`).value) || 1;
+                currentConfig.layout[key].color = document.getElementById(`${key}-color`).value;
+                currentConfig.layout[key].font = document.getElementById(`${key}-font`).value;
+            });
+            return currentConfig;
+        }
+
+        // 翻页逻辑
+        function changePreview(step) {
+            const cfg = gatherForm();
+            // 算出最大行数
+            const maxLen = Math.max(cfg.texts.text1.length, cfg.texts.text2.length, cfg.texts.text3.length, cfg.texts.text4.length);
+
+            previewIndex += step;
+            if (previewIndex < 0) previewIndex = 0;
+            if (previewIndex >= maxLen) previewIndex = maxLen - 1;
+            if (previewIndex < 0) previewIndex = 0; // 防止内容完全为空
+
+            updatePreview();
+        }
+
+        // 更新翻页器的文字状态
+        function updateCounter(cfg) {
+            const maxLen = Math.max(1, cfg.texts.text1.length, cfg.texts.text2.length, cfg.texts.text3.length, cfg.texts.text4.length);
+            document.getElementById('preview-counter').innerText = `预览: 第 ${previewIndex + 1} 项 / 共 ${maxLen} 项`;
+        }
+
+        // 防抖：0.5秒内没有新输入才触发预览
+        function debouncedPreview() {
+            clearTimeout(previewTimer);
+            const img = document.getElementById('preview-image');
+            img.style.opacity = '0.5'; // 提示正在加载
+            previewTimer = setTimeout(updatePreview, 500);
+        }
+
+        // 向后端请求生成预览图
+        async function updatePreview() {
+            const cfg = gatherForm();
+            if (!cfg) return;
+
+            updateCounter(cfg);
+
+            const payload = {
+                config: cfg,
+                preview_index: previewIndex
+            };
+
+            const res = await fetch('/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            const img = document.getElementById('preview-image');
+            img.src = data.url;
+            img.style.opacity = '1';
+        }
+
+        // 初次加载配置
+        async function loadConfig() {
+            const res = await fetch('/api/config');
+            currentConfig = await res.json();
+
+            // 如果后端传来的配置里没有text2/4，给个默认空数组兜底
+            if (!currentConfig.texts.text2) currentConfig.texts.text2 = [];
+            if (!currentConfig.texts.text4) currentConfig.texts.text4 = [];
+
+            initDataForm(currentConfig);
+            renderLayoutForm(currentConfig);
+            updatePreview();
+        }
+
+        // 打印日志
+        function log(msg) {
+            const consoleEl = document.getElementById('log-console');
+            consoleEl.innerHTML += `> ${msg}\n`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        // 触发生成
+        function buildVideo() {
+            const cfg = gatherForm();
+            if (!cfg) return;
+
+            document.getElementById('progress-bar').style.width = '0%';
+            log("开始初始化生成管线...");
+
+            // 生成时默认把配置存回去
+            const payload = { config: cfg, preview_index: 0 };
+            fetch('/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                const source = new EventSource('/api/build');
+
+                source.addEventListener('log', e => log(JSON.parse(e.data).msg || JSON.parse(e.data)));
+                source.addEventListener('progress', e => {
+                    const data = JSON.parse(e.data);
+                    document.getElementById('progress-bar').style.width = `${data.pct}%`;
+                    log(`[PROGRESS] ${data.pct}% - ${data.msg}`);
+                });
+                source.addEventListener('done', e => {
+                    log(`✅ 成功: 视频已保存至 ${JSON.parse(e.data).msg || JSON.parse(e.data)}`);
+                    document.getElementById('progress-bar').style.width = `100%`;
+                    source.close();
+                });
+                source.addEventListener('error', e => {
+                    log(`❌ 错误: ${JSON.parse(e.data).msg}`);
+                    source.close();
+                });
+            });
+        }
+
+        window.onload = loadConfig;
+    </script>
 </body>
+
 </html>
